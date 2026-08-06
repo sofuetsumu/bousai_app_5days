@@ -107,7 +107,6 @@ def load_shelters():
 def save_instructions():
     """指示ボードのデータをファイルに保存する"""
     try:
-        os.makedirs(os.path.dirname(INSTRUCTIONS_FILE), exist_ok=True)
         with open(INSTRUCTIONS_FILE, 'w', encoding='utf-8') as f:
             json.dump(instructions, f, ensure_ascii=False, indent=2)
     except Exception:
@@ -117,7 +116,6 @@ def save_instructions():
 def save_shelters():
     """避難所データをファイルに保存する"""
     try:
-        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         with open(DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(shelters, f, ensure_ascii=False, indent=2)
     except Exception:
