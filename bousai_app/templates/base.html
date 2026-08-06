@@ -4,31 +4,181 @@
   <meta charset="utf-8">
   <title>{% block title %}防災アプリ{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: linear-gradient(135deg, #f3f9ff 0%, #e8f2ff 100%);
+      color: #12324a;
+      font-size: 16px;
+    }
+    .app-header {
+      background: linear-gradient(90deg, #0f5fd8 0%, #4ba3ff 100%);
+      color: white;
+      padding: 24px 28px;
+      box-shadow: 0 4px 20px rgba(15, 95, 216, 0.2);
+    }
+    .app-header h1 {
+      margin: 0 0 8px;
+      font-size: 1.8rem;
+      color: white;
+    }
+    .app-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+    .app-nav a {
+      color: white;
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.15);
+    }
+    .app-nav a:hover {
+      background: rgba(255,255,255,0.25);
+    }
+    .app-main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+  </style>
 </head>
-<body>
-  <!-- ヘッダー -->
-  <h1>防災アプリ</h1>
+<body data-page-size="small" data-page-language="ja">
+  <header class="app-header">
+    <h1 data-i18n="app_title">防災アプリ</h1>
+    <nav class="app-nav">
+      <a href="/" data-i18n="nav_home">ホーム</a>
+      <a href="/shelter_search" data-i18n="nav_shelter_search">避難所検索</a>
+      <a href="/shelter_register" data-i18n="nav_shelter_register">避難所登録</a>
+      <a href="/board" data-i18n="nav_board">指示・発信ボード</a>
+      {% if session.logged_in %}
+        <span data-i18n="nav_logged_in">ログイン中</span>{% if session.username %}（{{ session.username }}）{% endif %}
+        <a href="/logout" data-i18n="nav_logout">ログアウト</a>
+      {% else %}
+        <span data-i18n="nav_not_logged_in">未ログイン</span>
+        <a href="/login" data-i18n="nav_login">ログイン</a>
+      {% endif %}
+    </nav>
+  </header>
 
-  <!-- ナビゲーション -->
-  <nav>
-    <a href="/">ホーム</a> |
-    <a href="/shelter_search">避難所検索</a> |
-    <a href="/shelter_register">避難所登録</a> |
-    <a href="/board">指示・発信ボード</a>
-    ｜
-    {% if session.logged_in %}
-      ログイン中{% if session.username %}（{{ session.username }}）{% endif %}
-      <a href="/logout">ログアウト</a>
-    {% else %}
-      未ログイン
-      <a href="/login">ログイン</a>
-    {% endif %}
-  </nav>
-  <hr>
-
-  <main>
-    <!-- ここに子テンプレートの content が入る -->
+  <main class="app-main">
     {% block content %}{% endblock %}
   </main>
+
+  <script>
+    (function() {
+      const translations = {
+        ja: {
+          app_title: '防災アプリ',
+          nav_home: 'ホーム',
+          nav_shelter_search: '避難所検索',
+          nav_shelter_register: '避難所登録',
+          nav_board: '指示・発信ボード',
+          nav_logged_in: 'ログイン中',
+          nav_logout: 'ログアウト',
+          nav_not_logged_in: '未ログイン',
+          nav_login: 'ログイン',
+          weather_title: '青森市の気象警報・注意報',
+          weather_size_label: '文字サイズを選択してください',
+          weather_language_label: '言語を選択してください',
+          size_large: '大',
+          size_medium: '中',
+          size_small: '小',
+          lang_ja: '日本語',
+          lang_en: 'English',
+          shelter_map_title: '避難所マップ',
+          shelter_map_link: '一覧を見る',
+          report_form_title: '通報フォーム',
+          reporter_name: '入力者名',
+          reporter_phone: '入力者電話番号',
+          disaster_type: '災害種類',
+          disaster_other_placeholder: 'その他の災害種類を入力',
+          occurred_at: '発生日時',
+          location: '発生場所',
+          injury_status: 'けが人有無',
+          injury_count_placeholder: '人数（任意）',
+          details: '状況詳細入力',
+          submit_report: '通報する',
+          phone_note_title: '電話で通報する場合',
+          phone_note_address: '青森市役所（本庁舎）'
+        },
+        en: {
+          app_title: 'Disaster Support App',
+          nav_home: 'Home',
+          nav_shelter_search: 'Shelter Search',
+          nav_shelter_register: 'Shelter Registration',
+          nav_board: 'Instructions Board',
+          nav_logged_in: 'Logged in',
+          nav_logout: 'Log out',
+          nav_not_logged_in: 'Not logged in',
+          nav_login: 'Log in',
+          weather_title: 'Aomori City Weather Warnings and Advisories',
+          weather_size_label: 'Select text size',
+          weather_language_label: 'Select language',
+          size_large: 'Large',
+          size_medium: 'Medium',
+          size_small: 'Small',
+          lang_ja: '日本語',
+          lang_en: 'English',
+          shelter_map_title: 'Shelter Map',
+          shelter_map_link: 'View all',
+          report_form_title: 'Report Form',
+          reporter_name: 'Reporter name',
+          reporter_phone: 'Reporter phone number',
+          disaster_type: 'Disaster type',
+          disaster_other_placeholder: 'Enter other disaster type',
+          occurred_at: 'Occurrence time',
+          location: 'Occurrence location',
+          injury_status: 'Injury status',
+          injury_count_placeholder: 'Number of people (optional)',
+          details: 'Details',
+          submit_report: 'Submit report',
+          phone_note_title: 'Call to report',
+          phone_note_address: 'Aomori City Hall (Main Building)'
+        }
+      };
+
+      function applyPageLanguage() {
+        const body = document.body;
+        const language = body.getAttribute('data-page-language') || 'ja';
+        document.documentElement.lang = language;
+
+        document.querySelectorAll('[data-i18n]').forEach(function(element) {
+          const key = element.getAttribute('data-i18n');
+          const value = translations[language] && translations[language][key];
+          if (value) {
+            element.textContent = value;
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(function(element) {
+          const key = element.getAttribute('data-i18n-placeholder');
+          const value = translations[language] && translations[language][key];
+          if (value) {
+            element.setAttribute('placeholder', value);
+          }
+        });
+      }
+
+      function applyPageSize() {
+        const body = document.body;
+        const size = body.getAttribute('data-page-size') || 'small';
+        const scaleMap = { small: 1, medium: 1.1, large: 1.25 };
+        const scale = scaleMap[size] || 1;
+        body.style.fontSize = `${16 * scale}px`;
+      }
+
+      window.applyPageLanguage = applyPageLanguage;
+      window.applyPageSize = applyPageSize;
+
+      applyPageSize();
+      applyPageLanguage();
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card wide-card">
+  <h2>避難所登録</h2>
+  {% if success %}
+    <div class="message success">{{ message }}</div>
+  {% endif %}
+  {% if errors %}
+    <div class="message error">
+      <ul>
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form method="post" class="form-stack">
+    <label>避難所名<input type="text" name="name" value="{{ form_data.name }}"></label>
+    <label>収容人数<input type="text" name="capacity" value="{{ form_data.capacity }}"></label>
+    <label>住所<input type="text" name="address" value="{{ form_data.address }}"></label>
+    <label>住所ラベル<select name="label">
+      <option value="" {% if form_data.label == '' %}selected{% endif %}>選択してください</option>
+      <option value="学校" {% if form_data.label == '学校' %}selected{% endif %}>学校</option>
+      <option value="公民館" {% if form_data.label == '公民館' %}selected{% endif %}>公民館</option>
+      <option value="体育館" {% if form_data.label == '体育館' %}selected{% endif %}>体育館</option>
+    </select></label>
+    <label>バリアフリー<input type="text" name="accessibility" value="{{ form_data.accessibility }}"></label>
+    <label>男性トイレ数<input type="text" name="toilets-male" value="{{ form_data.toilets_male if form_data.toilets_male is defined else '' }}"></label>
+    <label>女性トイレ数<input type="text" name="toilets-female" value="{{ form_data.toilets_female if form_data.toilets_female is defined else '' }}"></label>
+    <label>共用トイレ数<input type="text" name="toilets-common" value="{{ form_data.toilets_common if form_data.toilets_common is defined else '' }}"></label>
+    <label>備考<textarea name="features">{{ form_data.features }}</textarea></label>
+    <button type="submit" class="primary-button">登録する</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,37 +1,270 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- 避難所マップ -->
-<h2>避難所マップ</h2>
-<div id="shelterMap" style="height: 300px;"></div>
+<style>
+  .panel, .notice-panel, .report-form-panel {
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(15, 95, 216, 0.12);
+    padding: 20px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.3fr 0.9fr;
+    gap: 20px;
+  }
+  .panel h3, .notice-panel h3, .report-form-panel h3 {
+    margin-top: 0;
+    color: #0b4fa2;
+  }
+  .report-layout {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 20px;
+    align-items: start;
+    margin-top: 20px;
+  }
+  .phone-note {
+    background: #fff7d6;
+    border: 1px solid #f0d27a;
+    border-radius: 16px;
+    padding: 18px;
+    line-height: 1.7;
+    color: #6a4a00;
+  }
+  .phone-note strong {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .panel-header a {
+    color: #0f5fd8;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  #shelterMap {
+    height: 320px;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .notice-list {
+    padding-left: 18px;
+    margin: 0;
+  }
+  .notice-list li {
+    margin-bottom: 8px;
+  }
+  .weather-settings {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .weather-setting-block {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid #d8e7ff;
+    border-radius: 14px;
+    background: #f8fbff;
+  }
+  .weather-setting-label {
+    margin: 0;
+    font-weight: 700;
+    color: #0b4fa2;
+  }
+  .weather-control-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .weather-control-buttons button {
+    border: 1px solid #8dbdff;
+    background: white;
+    color: #0b4fa2;
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .weather-control-buttons button.active {
+    background: #0f5fd8;
+    color: white;
+    border-color: #0f5fd8;
+  }
+  #weatherContent {
+    line-height: 1.7;
+  }
+  @media (max-width: 900px) {
+    .hero, .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 
-<!-- 気象警報・注意報 -->
-<h2>青森市 気象警報・注意報</h2>
-<p>10分おきに自動更新されます。</p>
-<div id="weatherContent">
-  <p>読み込み中...</p>
+<div class="grid">
+  <section class="panel">
+    <div class="panel-header">
+      <h3 data-i18n="shelter_map_title">避難所マップ</h3>
+      <a href="/shelter_search" data-i18n="shelter_map_link">一覧を見る</a>
+    </div>
+    <div id="shelterMap"></div>
+  </section>
+
+  <section class="panel">
+    <div class="weather-settings" data-selected-size="small" data-selected-language="ja">
+      <div class="weather-setting-block">
+        <p class="weather-setting-label" data-i18n="weather_size_label">文字サイズを選択してください</p>
+        <div class="weather-control-buttons" role="group" aria-label="文字サイズの選択">
+          <button type="button" class="size-option" data-size="large" data-i18n="size_large">大</button>
+          <button type="button" class="size-option" data-size="medium" data-i18n="size_medium">中</button>
+          <button type="button" class="size-option" data-size="small" data-i18n="size_small">小</button>
+        </div>
+      </div>
+      <div class="weather-setting-block">
+        <p class="weather-setting-label" data-i18n="weather_language_label">言語を選択してください</p>
+        <div class="weather-control-buttons" role="group" aria-label="言語の選択">
+          <button type="button" class="lang-option" data-language="ja" data-i18n="lang_ja">日本語</button>
+          <button type="button" class="lang-option" data-language="en" data-i18n="lang_en">English</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel-header" style="margin-top: 8px;">
+      <h3 data-i18n="weather_title">青森市の気象警報・注意報</h3>
+    </div>
+    <div id="weatherContent">
+      <p>読み込み中...</p>
+    </div>
+  </section>
 </div>
 
-<!-- Leaflet の読み込み -->
+<div class="report-layout">
+  <section class="report-form-panel">
+    <h3 data-i18n="report_form_title">通報フォーム</h3>
+    <form>
+      <div style="display:grid; gap:12px;">
+        <div>
+          <label for="reporterName" data-i18n="reporter_name">入力者名</label><br>
+          <input id="reporterName" name="reporterName" type="text" style="width:100%; padding:8px; margin-top:4px;">
+        </div>
+
+        <div>
+          <label for="reporterPhone" data-i18n="reporter_phone">入力者電話番号</label><br>
+          <input id="reporterPhone" name="reporterPhone" type="text" style="width:100%; padding:8px; margin-top:4px;">
+        </div>
+
+        <div>
+          <label data-i18n="disaster_type">災害種類</label><br>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+            <label><input type="checkbox" name="disasterType" value="地震"> 地震</label>
+            <label><input type="checkbox" name="disasterType" value="津波"> 津波</label>
+            <label><input type="checkbox" name="disasterType" value="土砂崩れ"> 土砂崩れ</label>
+            <label><input type="checkbox" name="disasterType" value="積雪"> 積雪</label>
+            <label><input type="checkbox" name="disasterType" value="大雨"> 大雨</label>
+            <label><input type="checkbox" name="disasterType" value="強風"> 強風</label>
+            <label><input type="checkbox" name="disasterType" value="火災"> 火災</label>
+            <label><input type="checkbox" name="disasterType" value="その他"> その他</label>
+          </div>
+          <input id="customDisasterType" name="customDisasterType" type="text" data-i18n-placeholder="disaster_other_placeholder" placeholder="その他の災害種類を入力" style="width:100%; padding:8px; margin-top:8px; display:none;">
+        </div>
+
+        <div>
+          <label for="occurredDate" data-i18n="occurred_at">発生日時</label><br>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:4px;">
+            <input id="occurredDate" name="occurredDate" type="date" style="width:100%; padding:8px;">
+            <input id="occurredTime" name="occurredTime" type="time" style="width:100%; padding:8px;">
+          </div>
+        </div>
+
+        <div>
+          <label for="location" data-i18n="location">発生場所</label><br>
+          <input id="location" name="location" type="text" style="width:100%; padding:8px; margin-top:4px;">
+        </div>
+
+        <div>
+          <label data-i18n="injury_status">けが人有無</label><br>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+            <label><input type="radio" name="injury" value="有"> 有</label>
+            <label><input type="radio" name="injury" value="無"> 無</label>
+            <label><input type="radio" name="injury" value="不明"> 不明</label>
+          </div>
+          <input id="injuryCount" name="injuryCount" type="number" min="1" data-i18n-placeholder="injury_count_placeholder" placeholder="人数（任意）" style="width:100%; padding:8px; margin-top:8px;">
+        </div>
+
+        <div>
+          <label for="details" data-i18n="details">状況詳細入力</label><br>
+          <textarea id="details" name="details" rows="4" style="width:100%; padding:8px; margin-top:4px;"></textarea>
+        </div>
+
+        <div>
+          <button type="submit" style="padding:10px 16px; background:#0f5fd8; color:white; border:none; border-radius:8px; cursor:pointer;" data-i18n="submit_report">通報する</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <aside class="phone-note">
+    <strong data-i18n="phone_note_title">電話で通報する場合</strong>
+    <span data-i18n="phone_note_address">青森市役所（本庁舎）</span><br>
+    017-734-1111
+  </aside>
+</div>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 地図の初期化（藤沢市周辺を中心に設定）
-    const map = L.map('shelterMap').setView([35.3390, 139.4903], 12);
+    const map = L.map('shelterMap').setView([40.8244, 140.7400], 12);
 
-    // OpenStreetMapタイルを追加
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // 気象警報・注意報の自動更新機能
+    const weatherSettings = document.querySelector('.weather-settings');
+    const sizeButtons = weatherSettings.querySelectorAll('.size-option');
+    const langButtons = weatherSettings.querySelectorAll('.lang-option');
+    let currentWeatherData = null;
+
+    function applyWeatherAppearance() {
+        const selectedSize = weatherSettings.getAttribute('data-selected-size') || 'small';
+        const selectedLanguage = weatherSettings.getAttribute('data-selected-language') || 'ja';
+
+        sizeButtons.forEach(button => {
+            button.classList.toggle('active', button.getAttribute('data-size') === selectedSize);
+        });
+
+        langButtons.forEach(button => {
+            button.classList.toggle('active', button.getAttribute('data-language') === selectedLanguage);
+        });
+
+        document.body.setAttribute('data-page-size', selectedSize);
+        document.body.setAttribute('data-page-language', selectedLanguage);
+        if (window.applyPageSize) {
+            window.applyPageSize();
+        }
+        if (window.applyPageLanguage) {
+            window.applyPageLanguage();
+        }
+
+        if (currentWeatherData) {
+            updateWeatherContent(currentWeatherData);
+        } else {
+            const weatherContent = document.getElementById('weatherContent');
+            const texts = getWeatherTexts(selectedLanguage);
+            weatherContent.innerHTML = `<p>${texts.loading}</p>`;
+        }
+    }
+
     function updateWeatherWarnings() {
         fetch('/api/weather_warnings')
             .then(response => response.json())
             .then(data => {
-                console.log('気象情報を更新しました:', data);
+                currentWeatherData = data;
                 updateWeatherContent(data);
             })
             .catch(error => {
@@ -39,34 +272,91 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    function getWeatherTexts(selectedLanguage) {
+        return selectedLanguage === 'en' ? {
+            loading: 'Loading...',
+            fetchFailed: 'Failed to load weather information.',
+            areaLabel: 'Target area:',
+            latestInfoLabel: 'Latest information:',
+            noAlerts: 'No warning or advisory is currently in effect.',
+            lastCheckedLabel: 'Last checked:',
+            reportTimeLabel: 'Latest JMA release:',
+            areaFallback: 'Aomori City',
+            headlineFallback: 'No latest release information.',
+            lastFetchFallback: 'Updating...',
+            reportTimeFallback: 'Unknown'
+        } : {
+            loading: '読み込み中...',
+            fetchFailed: '気象情報の取得に失敗しました',
+            areaLabel: '対象地域:',
+            latestInfoLabel: '最新情報:',
+            noAlerts: '現在、警報・注意報は発表されていません',
+            lastCheckedLabel: '最終確認:',
+            reportTimeLabel: '気象庁最終発表:',
+            areaFallback: '青森市',
+            headlineFallback: '最新の発表情報はありません',
+            lastFetchFallback: '更新中...',
+            reportTimeFallback: '不明'
+        };
+    }
+
     function updateWeatherContent(data) {
         const weatherContent = document.getElementById('weatherContent');
+        const selectedLanguage = weatherSettings.getAttribute('data-selected-language') || 'ja';
+        const texts = getWeatherTexts(selectedLanguage);
 
         if (data.error) {
-            weatherContent.innerHTML = '<p>気象情報の取得に失敗しました</p>';
+            weatherContent.innerHTML = `<p>${texts.fetchFailed}</p>`;
             return;
         }
 
         let warningsHtml = '';
         if (data.warnings && data.warnings.length > 0) {
-            warningsHtml = '<ul>';
+            warningsHtml = '<ul class="notice-list">';
             data.warnings.forEach(warning => {
                 warningsHtml += `<li>${warning.name}（${warning.status}）</li>`;
             });
             warningsHtml += '</ul>';
         } else {
-            warningsHtml = '<p>現在、警報・注意報は発表されていません</p>';
+            warningsHtml = `<p>${texts.noAlerts}</p>`;
         }
 
         weatherContent.innerHTML = `
-            <p>対象地域: ${data.area_name || '青森市'}</p>
+            <p><strong>${texts.areaLabel}</strong> ${data.area_name || texts.areaFallback}</p>
+            <p><strong>${texts.latestInfoLabel}</strong> ${data.headline_text || texts.headlineFallback}</p>
             ${warningsHtml}
-            <p>最終確認: <span id="lastFetchTime">${data.last_fetch_time || '更新中...'}</span></p>
-            <p>気象庁最終発表: ${data.report_time || '不明'}</p>
+            <p><strong>${texts.lastCheckedLabel}</strong> ${data.last_fetch_time || texts.lastFetchFallback}</p>
+            <p><strong>${texts.reportTimeLabel}</strong> ${data.report_time || texts.reportTimeFallback}</p>
         `;
     }
 
-    // 初回表示＋10分（600,000ミリ秒）おきに自動更新
+    sizeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            weatherSettings.setAttribute('data-selected-size', this.getAttribute('data-size'));
+            applyWeatherAppearance();
+        });
+    });
+
+    langButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            weatherSettings.setAttribute('data-selected-language', this.getAttribute('data-language'));
+            applyWeatherAppearance();
+        });
+    });
+
+    const customDisasterType = document.getElementById('customDisasterType');
+    document.querySelectorAll('input[name="disasterType"]').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            if (this.value === 'その他' && this.checked) {
+                customDisasterType.style.display = 'block';
+            } else if (this.value === 'その他' && !this.checked) {
+                customDisasterType.style.display = 'none';
+                customDisasterType.value = '';
+            }
+        });
+    });
+
+    applyWeatherAppearance();
     updateWeatherWarnings();
     setInterval(updateWeatherWarnings, 600000);
 });

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card wide-card">
+  <h2>避難所検索</h2>
+  <form method="get" action="/search_results" class="search-form">
+    <input type="text" name="q" placeholder="避難所名・地区名を入力">
+    <select name="type">
+      <option value="name">名称</option>
+      <option value="district">地区</option>
+    </select>
+    <button type="submit" class="primary-button">検索</button>
+    <a class="secondary-link" href="/all_shelters">全施設一覧</a>
+  </form>
+
+  <div class="card-list">
+    {% for shelter in shelters %}
+      <article class="shelter-card">
+        <h3>{{ shelter.name }}</h3>
+        <p>{{ shelter.address or '住所未登録' }}</p>
+      </article>
+    {% else %}
+      <p>登録された避難所はまだありません。</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

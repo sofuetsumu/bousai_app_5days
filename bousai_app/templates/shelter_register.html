@@ -1,23 +1,248 @@
 {% extends "base.html" %}
 
+{% block title %}避難所登録{% endblock %}
+
 {% block content %}
-<h2>避難所登録</h2>
-<p>新しい避難所情報を登録します。</p>
+<style>
+  .register-layout {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .panel {
+    background: rgba(255,255,255,0.96);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 95, 216, 0.12);
+    padding: 22px;
+  }
+  .panel h2, .panel h3 {
+    margin-top: 0;
+    color: #0b4fa2;
+  }
+  .required {
+    color: #d13438;
+    font-weight: 700;
+  }
+  .form-grid {
+    display: grid;
+    gap: 12px;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #cfe2ff;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+  }
+  .inline-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .inline-options label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .message {
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+  .message.success {
+    background: #e9fbef;
+    color: #17653a;
+  }
+  .message.error {
+    background: #fdecee;
+    color: #b42318;
+  }
+  .similar-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .similar-item {
+    padding: 10px 12px;
+    border: 1px solid #d8e7ff;
+    border-radius: 10px;
+    background: #f8fbff;
+  }
+  .similar-item strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+  .submit-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .submit-row button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    background: #0f5fd8;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  @media (max-width: 900px) {
+    .register-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 
-<!-- 成功・エラーメッセージ表示 -->
-{% if success %}
-  <p>{{ message }}</p>
-{% endif %}
+<div class="register-layout">
+  <section class="panel">
+    <h2>避難所登録</h2>
+    {% if success %}
+      <div class="message success">{{ message }}</div>
+    {% endif %}
+    {% if errors %}
+      <div class="message error">
+        <ul style="margin:0; padding-left: 18px;">
+          {% for error in errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
 
-{% if error %}
-  <p>{{ message }}</p>
-{% endif %}
+    <form method="post">
+      <div class="form-grid">
+        <div class="field">
+          <label for="name">避難所名<span class="required">※</span></label>
+          <input id="name" name="name" type="text" value="{{ form_data.name }}" required>
+        </div>
 
-<form method="POST">
-  <p>
-    <label for="name">避難所名（必須）</label><br>
-    <input type="text" id="name" name="name">
-  </p>
-  <p><button type="submit">登録</button></p>
-</form>
+        <div class="field">
+          <label for="capacity">収容人数<span class="required">※</span></label>
+          <input id="capacity" name="capacity" type="text" value="{{ form_data.capacity }}" required>
+        </div>
+
+        <div class="field">
+          <label for="address">住所<span class="required">※</span></label>
+          <input id="address" name="address" type="text" value="{{ form_data.address }}" required>
+        </div>
+
+        <div class="field">
+          <label for="label">住所ラベル<span class="required">※</span></label>
+          <select id="label" name="label">
+            <option value="">選択してください</option>
+            <option value="学校" {% if form_data.label == '学校' %}selected{% endif %}>学校</option>
+            <option value="公民館" {% if form_data.label == '公民館' %}selected{% endif %}>公民館</option>
+            <option value="避難所" {% if form_data.label == '避難所' %}selected{% endif %}>避難所</option>
+            <option value="その他" {% if form_data.label == 'その他' %}selected{% endif %}>その他</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="accessibility">バリアフリー度</label>
+          <select id="accessibility" name="accessibility">
+            <option value="">選択してください</option>
+            <option value="あり" {% if form_data.accessibility == 'あり' %}selected{% endif %}>あり</option>
+            <option value="一部あり" {% if form_data.accessibility == '一部あり' %}selected{% endif %}>一部あり</option>
+            <option value="なし" {% if form_data.accessibility == 'なし' %}selected{% endif %}>なし</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>トイレの数</label>
+          <div class="inline-options">
+            <label>男<input type="text" name="toilets-male" value="{{ form_data.toilets_male }}" style="width:70px; margin-left:6px;"></label>
+            <label>女<input type="text" name="toilets-female" value="{{ form_data.toilets_female }}" style="width:70px; margin-left:6px;"></label>
+            <label>共通<input type="text" name="toilets-common" value="{{ form_data.toilets_common }}" style="width:70px; margin-left:6px;"></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="features">その他特徴</label>
+          <textarea id="features" name="features" rows="4">{{ form_data.features }}</textarea>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit">登録する</button>
+          <a href="/shelter_search">検索画面へ戻る</a>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <aside class="panel">
+    <h3>類似避難所</h3>
+    <div id="similarContent">
+      {% if similar_shelters %}
+        <ul class="similar-list">
+          {% for shelter in similar_shelters %}
+            <li class="similar-item">
+              <strong>{{ shelter.name }}</strong>
+              <div>{{ shelter.address }}</div>
+              <small>類似度: {{ '%.1f'|format(shelter.score * 100) }}%</small>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>避難所名や住所を入力すると、既存の類似施設を表示します。</p>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const nameInput = document.getElementById('name');
+  const addressInput = document.getElementById('address');
+  const similarContent = document.getElementById('similarContent');
+
+  function renderSimilarShelters(shelters) {
+    if (!shelters || shelters.length === 0) {
+      similarContent.innerHTML = '<p>避難所名や住所を入力すると、既存の類似施設を表示します。</p>';
+      return;
+    }
+
+    const html = '<ul class="similar-list">' + shelters.map(function(shelter) {
+      return '<li class="similar-item"><strong>' + shelter.name + '</strong><div>' + shelter.address + '</div><small>類似度: ' + Math.round(shelter.score * 100) + '%</small></li>';
+    }).join('') + '</ul>';
+    similarContent.innerHTML = html;
+  }
+
+  function updateSimilarShelters() {
+    const name = nameInput.value.trim();
+    const address = addressInput.value.trim();
+
+    if (!name && !address) {
+      renderSimilarShelters([]);
+      return;
+    }
+
+    fetch('/shelter_similarity?name=' + encodeURIComponent(name) + '&address=' + encodeURIComponent(address))
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(data) {
+        renderSimilarShelters(data.shelters || []);
+      })
+      .catch(function() {
+        renderSimilarShelters([]);
+      });
+  }
+
+  ['input', 'change'].forEach(function(eventName) {
+    nameInput.addEventListener(eventName, updateSimilarShelters);
+    addressInput.addEventListener(eventName, updateSimilarShelters);
+  });
+});
+</script>
 {% endblock %}

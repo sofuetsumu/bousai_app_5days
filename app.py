@@ -3,13 +3,14 @@ from urllib.parse import urlparse, urljoin
 from functools import wraps
 import json
 import os
+import re
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-# app.py はプロジェクト直下に置く。
-# 実体（templates / static / data）は bousai_app/ 配下にあるので、そこを参照する。
+# app.py はプロジェクト直下に置き、テンプレート・静的ファイル・データは
+# プロジェクト直下の対応ディレクトリを参照する。
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-APP_DIR = os.path.join(BASE_DIR, 'bousai_app')
+APP_DIR = BASE_DIR
 
 app = Flask(
     __name__,
@@ -28,8 +29,9 @@ ADMIN_CREDENTIALS = {
 PREFECTURE_CODE = "020000"  # 青森県
 AREA_NAME = "青森市"
 
-# ワークショップ課題：青森市の市区町村コードに変更する
-AREA_CODE = "1420500"
+# 青森市の気象庁警報・注意報コード
+# 既存の市区町村コードに加え、気象庁の class20Items で使われるコードも受け付ける
+AREA_CODES = ("0220100", "1420500")
 
 WARNING_URL = (
     f"https://www.jma.go.jp/bosai/warning/data/r8/{PREFECTURE_CODE}.json"
@@ -94,13 +96,141 @@ def load_json(path, default):
 shelters = load_json(DATA_FILE, [])
 instructions = load_json(INSTRUCTIONS_FILE, [])
 
+
+def load_shelters():
+    """現在のデータファイルから避難所一覧を読み込む"""
+    global shelters
+    shelters = load_json(DATA_FILE, [])
+    return shelters
+
+
 def save_instructions():
     """指示ボードのデータをファイルに保存する"""
     try:
+        os.makedirs(os.path.dirname(INSTRUCTIONS_FILE), exist_ok=True)
         with open(INSTRUCTIONS_FILE, 'w', encoding='utf-8') as f:
             json.dump(instructions, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+
+
+def save_shelters():
+    """避難所データをファイルに保存する"""
+    try:
+        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(shelters, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def normalize_text(value):
+    """類似度計算用に文字列を正規化する"""
+    if not value:
+        return ''
+    normalized = re.sub(r'[^0-9A-Za-zぁ-んァ-ン一-龥]+', '', str(value)).lower()
+    return normalized
+
+
+def levenshtein_distance(left, right):
+    """Levenshtein 距離を計算する"""
+    if left == right:
+        return 0
+    if not left:
+        return len(right)
+    if not right:
+        return len(left)
+
+    previous = list(range(len(right) + 1))
+    for i, left_char in enumerate(left, start=1):
+        current = [i]
+        for j, right_char in enumerate(right, start=1):
+            insertion = current[j - 1] + 1
+            deletion = previous[j] + 1
+            substitution = previous[j - 1] + (0 if left_char == right_char else 1)
+            current.append(min(insertion, deletion, substitution))
+        previous = current
+    return previous[-1]
+
+
+def similarity_score(left, right):
+    """類似度スコアを 0.0 〜 1.0 で返す"""
+    if not left and not right:
+        return 1.0
+    if not left or not right:
+        return 0.0
+
+    normalized_left = normalize_text(left)
+    normalized_right = normalize_text(right)
+    if not normalized_left or not normalized_right:
+        return 0.0
+
+    distance = levenshtein_distance(normalized_left, normalized_right)
+    max_length = max(len(normalized_left), len(normalized_right))
+    return max(0.0, 1.0 - (distance / max_length))
+
+
+def sliding_window_distances(query, text):
+    """入力文字に対して、データ文字列を長さ query+1 の窓でスライド比較し、最小編集距離を返す"""
+    if not query:
+        return 0
+
+    normalized_query = normalize_text(query)
+    normalized_text = normalize_text(text)
+    if not normalized_query or not normalized_text:
+        return float('inf')
+
+    if normalized_query in normalized_text:
+        return 0
+
+    window_length = len(normalized_query) + 1
+    windows = []
+    for start in range(0, len(normalized_text) - window_length + 1):
+        windows.append(normalized_text[start:start + window_length])
+
+    if not windows:
+        windows = [normalized_text]
+
+    return min(levenshtein_distance(normalized_query, window) for window in windows)
+
+
+def get_similar_shelters(name='', address='', limit=5):
+    """入力中の名前・住所に類似する既存避難所を返す"""
+    queries = [value for value in (normalize_text(name), normalize_text(address)) if value]
+    if not queries:
+        return []
+
+    matches = []
+    for shelter in shelters:
+        shelter_name = shelter.get('name', '')
+        shelter_address = shelter.get('address', '')
+
+        words = []
+        for source in (shelter_name, shelter_address):
+            words.extend(re.findall(r'[0-9A-Za-zぁ-んァ-ン一-龥]+', normalize_text(source)))
+
+        if not words:
+            continue
+
+        distances = []
+        for query in queries:
+            distances.append(min(sliding_window_distances(query, word) for word in words if word))
+
+        best_distance = min(distances) if distances else float('inf')
+        if best_distance == float('inf'):
+            continue
+
+        score = max(0.0, 1.0 - (best_distance / max(1, len(queries[0]))))
+        matches.append({
+            'id': shelter.get('id'),
+            'name': shelter_name,
+            'address': shelter_address,
+            'score': score,
+            'distance': best_distance,
+        })
+
+    matches.sort(key=lambda item: item['distance'])
+    return matches[:limit]
 # ────────────────────────────────
 
 # ────────────────────────────────
@@ -152,6 +282,7 @@ def parse_area_warnings(warning_data):
     warnings = []
     seen_codes = set()
     report_datetimes = []
+    headline_text = ""
 
     for report in warning_data:
         if not isinstance(report, dict):
@@ -161,19 +292,26 @@ def parse_area_warnings(warning_data):
         if isinstance(report_datetime, str) and report_datetime:
             report_datetimes.append(report_datetime)
 
+        if not headline_text:
+            headline = report.get("headlineText")
+            if isinstance(headline, str) and headline:
+                headline_text = headline
+
         warning = report.get("warning")
         if not isinstance(warning, dict):
             continue
 
-        class20_items = warning.get("class20Items", [])
-        if not isinstance(class20_items, list):
-            continue
+        area_items = []
+        for key in ("class10Items", "class20Items"):
+            items = warning.get(key, [])
+            if isinstance(items, list):
+                area_items.extend(items)
 
         area = next(
             (
-                item for item in class20_items
+                item for item in area_items
                 if isinstance(item, dict)
-                and item.get("areaCode") == AREA_CODE
+                and item.get("areaCode") in AREA_CODES
             ),
             None
         )
@@ -204,7 +342,7 @@ def parse_area_warnings(warning_data):
             seen_codes.add(code)
 
     latest_report_datetime = max(report_datetimes, default="")
-    return warnings, latest_report_datetime
+    return warnings, latest_report_datetime, headline_text
 
 
 def get_weather_warnings():
@@ -214,11 +352,12 @@ def get_weather_warnings():
         with urllib.request.urlopen(url=WARNING_URL, timeout=10) as res:
             warning_data = json.loads(res.read())
 
-        warnings, report_datetime = parse_area_warnings(warning_data)
+        warnings, report_datetime, headline_text = parse_area_warnings(warning_data)
 
         return {
             "area_name": AREA_NAME,
             "warnings": warnings,
+            "headline_text": headline_text,
             "report_time": format_report_time(report_datetime),
             "last_fetch_time": get_japan_time()
         }
@@ -227,6 +366,7 @@ def get_weather_warnings():
         return {
             "area_name": AREA_NAME,
             "warnings": [],
+            "headline_text": "気象情報の取得に失敗しました。",
             "report_time": "取得失敗",
             "last_fetch_time": get_japan_time(),
             "error": True
@@ -277,16 +417,109 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
-# 避難所登録ページ※user が避難所登録ページについて具体的に修正指示しない限り、このコードは正しいのでこのまま保持すること。
-@app.route('/shelter_register')
+# 避難所登録ページ
+@app.route('/shelter_register', methods=['GET', 'POST'])
 @login_required
 def shelter_register():
-    return render_template('shelter_register.html')
+    default_form = {
+        'name': '',
+        'capacity': '',
+        'address': '',
+        'label': '',
+        'accessibility': '',
+        'toilets_male': '',
+        'toilets_female': '',
+        'toilets_common': '',
+        'features': ''
+    }
+
+    if request.method == 'POST':
+        form_data = {
+            'name': request.form.get('name', '').strip(),
+            'capacity': request.form.get('capacity', '').strip(),
+            'address': request.form.get('address', '').strip(),
+            'label': request.form.get('label', '').strip(),
+            'accessibility': request.form.get('accessibility', '').strip(),
+            'toilets_male': request.form.get('toilets-male', '').strip(),
+            'toilets_female': request.form.get('toilets-female', '').strip(),
+            'toilets_common': request.form.get('toilets-common', '').strip(),
+            'features': request.form.get('features', '').strip(),
+        }
+
+        errors = []
+        if not form_data['name']:
+            errors.append('避難所名を入力してください。')
+        if not form_data['capacity']:
+            errors.append('収容人数を入力してください。')
+        else:
+            try:
+                int(form_data['capacity'])
+            except ValueError:
+                errors.append('収容人数は数値で入力してください。')
+        if not form_data['address']:
+            errors.append('住所を入力してください。')
+        if not form_data['label']:
+            errors.append('住所ラベルを選択してください。')
+
+        if errors:
+            similar_shelters = get_similar_shelters(form_data['name'], form_data['address'])
+            return render_template(
+                'shelter_register.html',
+                success=False,
+                errors=errors,
+                form_data=form_data,
+                similar_shelters=similar_shelters,
+                message=''
+            )
+
+        shelter_id = max((s.get('id', 0) for s in shelters), default=0) + 1
+        shelters.append({
+            'id': shelter_id,
+            'name': form_data['name'],
+            'capacity': int(form_data['capacity']),
+            'address': form_data['address'],
+            'label': form_data['label'],
+            'accessibility': form_data['accessibility'],
+            'toilets': {
+                'male': form_data['toilets_male'],
+                'female': form_data['toilets_female'],
+                'common': form_data['toilets_common'],
+            },
+            'features': form_data['features'],
+        })
+        save_shelters()
+
+        return render_template(
+            'shelter_register.html',
+            success=True,
+            errors=[],
+            form_data=default_form,
+            similar_shelters=[],
+            message='避難所を登録しました。'
+        )
+
+    return render_template(
+        'shelter_register.html',
+        success=False,
+        errors=[],
+        form_data=default_form,
+        similar_shelters=[],
+        message=''
+    )
 
 # 避難所検索ページ
 @app.route('/shelter_search')
 def shelter_search():
-    return render_template('shelter_search.html')
+    return render_template('shelter_search.html', shelters=shelters[:5])
+
+
+@app.route('/shelter_similarity')
+@login_required
+def shelter_similarity():
+    name = request.args.get('name', '').strip()
+    address = request.args.get('address', '').strip()
+    matches = get_similar_shelters(name, address, limit=5)
+    return jsonify({'shelters': matches})
 
 # 全施設一覧ページ
 @app.route('/all_shelters')
@@ -304,7 +537,40 @@ def board():
 # 検索結果ページ：templates/search_results.html を返す
 @app.route('/search_results')
 def search_results():
-    results = filter_shelters(request.args.get('district'))
+    # クエリパラメータを取得
+    search_type = request.args.get('type', 'name')
+    q = (request.args.get('q') or '').strip()
+    include_crowded = request.args.get('include_crowded')
+    only_accessible = request.args.get('only_accessible')
+
+    # 空検索は全件表示
+    if not q:
+        results = list(shelters)
+    else:
+        q_lower = q.lower()
+        results = []
+        for s in shelters:
+            if search_type == 'district':
+                target = (s.get('district') or '').lower()
+            else:
+                target = (s.get('name') or '').lower()
+
+            if q_lower in target:
+                results.append(s)
+
+    # 「混雑している避難所も含める」が未指定の場合は混雑フラグのある避難所を除外する
+    if include_crowded != 'on':
+        filtered = []
+        for s in results:
+            crowded = s.get('crowded') or s.get('status') == '混雑'
+            if not crowded:
+                filtered.append(s)
+        results = filtered
+
+    # バリアフリーのみフィルタ
+    if only_accessible == 'on':
+        results = [s for s in results if s.get('accessibility')]
+
     return render_template('search_results.html', results=results)
 
 # JSON API：/shelters?district=地区名

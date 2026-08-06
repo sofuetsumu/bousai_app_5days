@@ -10,5 +10,45 @@
   {
     "id": 5,
     "name": "鵠洋小学校"
+  },
+  {
+    "id": 6,
+    "name": "新しい避難所"
+  },
+  {
+    "id": 7,
+    "name": "あああ"
+  },
+  {
+    "id": 8,
+    "name": "あああ"
+  },
+  {
+    "id": 9,
+    "name": "あああ",
+    "capacity": 3,
+    "address": "あ",
+    "label": "学校",
+    "accessibility": "あり",
+    "toilets": {
+      "male": "1",
+      "female": "1",
+      "common": "1"
+    },
+    "features": "a"
+  },
+  {
+    "id": 10,
+    "name": "いい",
+    "capacity": 3,
+    "address": "大阪府大阪市",
+    "label": "学校",
+    "accessibility": "あり",
+    "toilets": {
+      "male": "1",
+      "female": "1",
+      "common": "1"
+    },
+    "features": "え"
   }
 ]

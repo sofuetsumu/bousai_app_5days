@@ -1,20 +1,40 @@
 {% extends "base.html" %}
 
+{% block title %}検索結果{% endblock %}
+
 {% block content %}
-<h2>検索結果</h2>
+<style>
+  .panel {
+    background: rgba(255,255,255,0.96);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 95, 216, 0.12);
+    padding: 22px;
+  }
+  .panel h2 { margin-top: 0; color: #0b4fa2; }
+  .shelter-list { display: grid; gap: 10px; padding: 0; list-style: none; margin: 12px 0 0; }
+  .shelter-list li { padding: 10px 12px; border: 1px solid #d8e7ff; border-radius: 10px; background: #f8fbff; }
+</style>
 
-{% if results %}
-  <ul>
-    {% for shelter in results %}
-    <li>{{ shelter.name }}</li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>該当する避難所が見つかりませんでした</p>
-{% endif %}
+<div class="panel">
+  <h2>検索結果</h2>
 
-<p>
-  <a href="/shelter_search">検索画面に戻る</a> |
-  <a href="/">トップページへ戻る</a>
-</p>
+  {% if results %}
+    <ul class="shelter-list">
+      {% for shelter in results %}
+        <li>
+          <strong>{{ shelter.name }}</strong><br>
+          <span>住所: {{ shelter.address or '未登録' }}</span><br>
+          <small>収容人数: {{ shelter.capacity or '未登録' }} / ラベル: {{ shelter.label or '未登録' }}</small>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>該当する避難所が見つかりませんでした</p>
+  {% endif %}
+
+  <p>
+    <a href="/shelter_search">検索画面に戻る</a> |
+    <a href="/">トップページへ戻る</a>
+  </p>
+</div>
 {% endblock %}

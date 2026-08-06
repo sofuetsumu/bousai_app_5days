@@ -1,8 +1,80 @@
 {% extends "base.html" %}
 
-{% block content %}
-<h2>避難所検索</h2>
-<p>登録されている避難所を確認できます。</p>
+{% block title %}避難所検索{% endblock %}
 
-<p><a href="/all_shelters">全施設一覧</a></p>
+{% block content %}
+<style>
+  .panel {
+    background: rgba(255,255,255,0.96);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 95, 216, 0.12);
+    padding: 22px;
+  }
+  .panel h2 { margin-top: 0; color: #0b4fa2; }
+  .shelter-list { display: grid; gap: 10px; padding: 0; list-style: none; margin: 12px 0 0; }
+  .shelter-list li { padding: 10px 12px; border: 1px solid #d8e7ff; border-radius: 10px; background: #f8fbff; }
+</style>
+
+<div class="panel">
+  <h2>避難所検索</h2>
+  <p>避難所名または地区で検索できます。</p>
+
+  <p><a href="/all_shelters">全施設一覧</a> | <a href="/shelter_register">新規登録</a></p>
+
+  <form method="get" action="/search_results" id="shelter-search-form">
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button type="button" class="tab-btn" data-type="name">避難所名</button>
+      <button type="button" class="tab-btn" data-type="district">地区</button>
+    </div>
+
+    <input type="hidden" name="type" id="search-type" value="name">
+
+    <div style="margin-bottom:12px;">
+      <input type="text" name="q" id="search-q" placeholder="避難所名を入力してください" style="width:100%; padding:8px; border-radius:8px; border:1px solid #d8e7ff;">
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label><input type="checkbox" name="include_crowded"> 混雑している避難所も含める</label>
+      &nbsp;&nbsp;
+      <label><input type="checkbox" name="only_accessible"> バリアフリーがある避難所のみにする</label>
+    </div>
+
+    <div>
+      <button type="submit" style="background:#0f5fd8; color:white; padding:8px 14px; border-radius:8px; border:none;">検索</button>
+    </div>
+  </form>
+
+  {% if shelters %}
+    <h3 style="margin-top:18px;">一部の登録避難所</h3>
+    <ul class="shelter-list">
+      {% for shelter in shelters %}
+        <li>{{ shelter.name }}（{{ shelter.address or '住所未登録' }}）</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>まだ登録された避難所はありません。</p>
+  {% endif %}
+</div>
+<script>
+  (function(){
+    // タブ切替とplaceholder制御
+    const tabs = document.querySelectorAll('.tab-btn');
+    const typeInput = document.getElementById('search-type');
+    const qInput = document.getElementById('search-q');
+    function activate(tab){
+      tabs.forEach(x=>{ x.style.opacity = 1; x.style.background = ''; });
+      tab.style.opacity = 0.8;
+      tab.style.background = 'rgba(15,95,216,0.08)';
+      typeInput.value = tab.getAttribute('data-type');
+      if (typeInput.value === 'district') {
+        qInput.placeholder = '地区名を入力してください';
+      } else {
+        qInput.placeholder = '避難所名を入力してください';
+      }
+    }
+    tabs.forEach(t => t.addEventListener('click', function(){ activate(this); }));
+    // 初期状態
+    if (tabs && tabs.length) activate(tabs[0]);
+  })();
+</script>
 {% endblock %}
