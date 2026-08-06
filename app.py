@@ -7,10 +7,10 @@ import re
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-# app.py はプロジェクト直下に置き、テンプレート・静的ファイル・データは
-# プロジェクト直下の対応ディレクトリを参照する。
+# app.py はプロジェクト直下に置く。
+# 実体（templates / static / data）は bousai_app/ 配下にあるので、そこを参照する。
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-APP_DIR = BASE_DIR
+APP_DIR = os.path.join(BASE_DIR, 'bousai_app')
 
 app = Flask(
     __name__,
